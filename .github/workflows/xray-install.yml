@@ -1,0 +1,41 @@
+name: Xray installer tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: debian:13-slim
+    timeout-minutes: 10
+    steps:
+      - name: Install test runtime
+        run: apt-get update && apt-get install -y --no-install-recommends bash ca-certificates git python3
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check Bash syntax
+        working-directory: ./xray-install
+        run: bash -n setup.sh && bash -n setup-proxy.sh && bash -n tests/integration.sh
+      - name: Run all installer behavior tests
+        working-directory: ./xray-install
+        run: python3 -m unittest discover -s tests -v
+
+  integration:
+    runs-on: ubuntu-latest
+    container: debian:13-slim
+    timeout-minutes: 15
+    steps:
+      - name: Install real integration dependencies
+        run: apt-get update && apt-get install -y --no-install-recommends bash ca-certificates curl git nginx openssl python3 unzip
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Verify real Xray, Nginx, TLS, and the proxy chain
+        working-directory: ./xray-install
+        run: bash tests/integration.sh
